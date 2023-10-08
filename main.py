@@ -32,8 +32,7 @@ class MailHandler:
         # # in other words the useful part that we actually, as in
         # # the actual text inside the mail
         # plain_text_part = None
-        # email_message = message_from_bytes(envelope.content)
-        # subject = email_message["Subject"]
+
         # print(f"Subject: {subject}")
         # for part in email_message.walk():
         #     if part.get_content_type() == "text/plain":
@@ -48,6 +47,9 @@ class MailHandler:
         # it can be removed, just visual
         sender = envelope.mail_from
         recipient = envelope.rcpt_tos[0]
+        email_message = message_from_bytes(envelope.content)
+        subject = email_message["Subject"]
+
         text_lines = []
         for ln in envelope.content.decode("utf8", errors="replace").splitlines():
             text_lines.append(f"> {ln}".strip())
@@ -57,12 +59,24 @@ class MailHandler:
 
         await firebase_handler.add_email_to_firebase(sender_email_address=sender,
                                                      recipient_email_address=recipient,
-                                                     message=email_content)
+                                                     message=email_content,
+                                                     subject=subject)
+
+
+async def test():
+    firebase_handler = FirebaseHandler()
+    await firebase_handler.add_email_to_firebase(
+        sender_email_address="moshe@gmail.com",
+        recipient_email_address="yaakov@anothermail.com",
+        message="I really hate Hamas.",
+        subject="Fuck gaza"
+    )
 
 
 # Here you start the actual server, hostname is your PRIVATE ipv4, and port has to be 25
 # Change it to your actual local ipv4 or use localhost
-controller = Controller(MailHandler(), hostname="172.31.31.126", port=25)
-controller.start()
-print("Server is running on 192.168.68.102:25")
-asyncio.get_event_loop().run_forever()
+
+# controller = Controller(MailHandler(), hostname="172.31.31.126", port=25)
+# controller.start()
+# print("Server is running on 192.168.68.102:25")
+# asyncio.get_event_loop().run_forever()
