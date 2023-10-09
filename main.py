@@ -1,12 +1,12 @@
 import asyncio
+import socket
 from aiosmtpd.controller import Controller
 from email import message_from_bytes
-
 from firebase_handler import FirebaseHandler
-
 
 class MailHandler:
     async def handle_RCPT(self, server, session, envelope, address, rcpt_options):
+        # Check if the email address ends with @darkcheese.org
         if not address.endswith("@darkcheese.org"):
             print("Address does not end with @darkcheese.org")
             return "550 not relaying to that domain"
@@ -14,71 +14,43 @@ class MailHandler:
         return "250 OK"
 
     async def handle_DATA(self, server, session, envelope):
-        print("Message from %s" % envelope.mail_from)
+        print(f"Message from {envelope.mail_from}")
+        print(f"Message for {envelope.rcpt_tos}")
 
-        # This is a string array of who it was sent to
-        # like ['bob@xxxx.com','jeff@xxxx.com']
-        # it can have a length of 1 if theres only 1
-        # person it was sent to
-        print("Message for %s" % envelope.rcpt_tos)
-
-        # If you want to print EVERYTHING in the mail
-        # including useless information, use this
-        print("Message data:\n")
-        for ln in envelope.content.decode("utf8", errors="replace").splitlines():
-            print(f"> {ln}".strip())
-
-        # This code is to just read the text part of the email
-        # in other words the useful part that we actually, as in
-        # the actual text inside the mail
-        plain_text_part = None
-
+        # Decode the email content
+        email_message = message_from_bytes(envelope.content)
+        subject = email_message["Subject"]
         print(f"Subject: {subject}")
+
+        # Extract the plain text part of the email
+        plain_text_part = None
         for part in email_message.walk():
             if part.get_content_type() == "text/plain":
                 plain_text_part = part.get_payload(decode=True).decode("utf-8")
                 break
+
         if plain_text_part:
-            # Do something with the plain text part
             print("Plain text content:")
             print(plain_text_part)
 
-        # This is to finish the mail and see that it finished
-        # it can be removed, just visual
-        sender = envelope.mail_from
-        recipient = envelope.rcpt_tos[0]
-        email_message = message_from_bytes(envelope.content)
-        subject = email_message["Subject"]
-
-        text_lines = []
-        for ln in envelope.content.decode("utf8", errors="replace").splitlines():
-            text_lines.append(f"> {ln}".strip())
-
+        # Prepare the email content for Firebase
+        text_lines = [f"> {ln}".strip() for ln in envelope.content.decode("utf8", errors="replace").splitlines()]
         email_content = "\n".join(text_lines)
-        firebase_handler: FirebaseHandler = FirebaseHandler()
 
+        # Send the email content to Firebase
+        firebase_handler: FirebaseHandler = FirebaseHandler()
         print("[+] Sending to firebase")
-        await firebase_handler.add_email_to_firebase(sender_email_address=sender,
-                                                     recipient_email_address=recipient,
+        firebase_handler.add_email_to_firebase(sender_email_address=envelope.mail_from,
+                                                     recipient_email_address=envelope.rcpt_tos[0],
                                                      message=email_content,
                                                      subject=subject)
         print("[+] Sent to firebase.")
 
+# Get the local IP address
+hostname = socket.gethostbyname(socket.gethostname())
 
-async def test():
-    firebase_handler = FirebaseHandler()
-    await firebase_handler.add_email_to_firebase(
-        sender_email_address="moshe@gmail.com",
-        recipient_email_address="yaakov@anothermail.com",
-        message="I really hate Hamas.",
-        subject="Fuck gaza"
-    )
-
-
-# Here you start the actual server, hostname is your PRIVATE ipv4, and port has to be 25
-# Change it to your actual local ipv4 or use localhost
-
-controller = Controller(MailHandler(), hostname="172.31.31.126", port=25)
+# Start the SMTP server
+controller = Controller(MailHandler(), hostname=hostname, port=25)
 controller.start()
-print("Server is running on 192.168.68.102:25")
+print(f"Server is running on {hostname}:25")
 asyncio.get_event_loop().run_forever()

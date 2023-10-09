@@ -1,0 +1,3 @@
+aiosmtpd
+asyncio
+firebase-admin

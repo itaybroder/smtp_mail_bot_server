@@ -17,9 +17,8 @@ class FirebaseHandler:
             cls.instance = super(FirebaseHandler, cls).__new__(cls)
         return cls.instance
 
-    @staticmethod
-    async def add_email_to_firebase(sender_email_address: str, recipient_email_address: str, message: str
-                                    , subject: str):
+    def add_email_to_firebase(self, sender_email_address: str, recipient_email_address: str, message: str
+                              , subject: str):
         """sender_mail_address - string, recipient_email_address - string , message - string,
          subject - string will be uploaded to the firebase server"""
 
