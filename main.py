@@ -46,8 +46,8 @@ class MailHandler:
                                                      subject=subject)
         print("[+] Sent to firebase.")
 
-# Get the local IP address
-hostname = socket.gethostbyname(socket.gethostname())
+# Bind the SMTP server to all available network interfaces
+hostname = "0.0.0.0"
 
 # Start the SMTP server
 controller = Controller(MailHandler(), hostname=hostname, port=25)
